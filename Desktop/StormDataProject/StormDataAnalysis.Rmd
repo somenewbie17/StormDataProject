@@ -1,0 +1,113 @@
+---
+title: "Storm Data Project."
+author: "Damethri George"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(lubridate)
+library(stringr)
+```
+
+## Synopsis
+
+This report explores the U.S. National Oceanic and Atmospheric Administration (NOAA) Storm Database to determine:
+
+1. Which types of events are most harmful to population health?
+2. Which types of events have the greatest economic consequences?
+
+Using raw storm data from 1950 to 2011, we process and analyze health and economic damages caused by weather events. The resulting insights can help prioritize resources for emergency planning and mitigation.
+
+---
+
+## Data Processing
+
+```{r load-data}
+# Load the raw compressed CSV data
+storm_data <- read.csv("repdata-data-StormData.csv.bz2")
+```
+```{r select-columns}
+# Select only necessary columns
+storm <- storm_data %>% 
+  select(EVTYPE, FATALITIES, INJURIES, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
+```
+
+```{r transform-economic-damage}
+# Convert exponents to numeric multipliers
+exp_convert <- function(x) {
+  x <- toupper(as.character(x))
+  ifelse(x %in% c("", "+", "-", "?"), 0,
+  ifelse(x == "H", 1e2,
+  ifelse(x == "K", 1e3,
+  ifelse(x == "M", 1e6,
+  ifelse(x == "B", 1e9, as.numeric(x)))))
+  )
+}
+
+storm <- storm %>%
+  mutate(PROPDMGEXP = exp_convert(PROPDMGEXP),
+         CROPDMGEXP = exp_convert(CROPDMGEXP),
+         PROPDMGVAL = PROPDMG * PROPDMGEXP,
+         CROPDMGVAL = CROPDMG * CROPDMGEXP)
+```
+
+---
+
+## Results
+
+### 1. Events Most Harmful to Population Health
+
+```{r health-impact}
+health_impact <- storm %>% 
+  group_by(EVTYPE) %>% 
+  summarise(Fatalities = sum(FATALITIES), Injuries = sum(INJURIES)) %>% 
+  mutate(Total = Fatalities + Injuries) %>% 
+  arrange(desc(Total)) %>% 
+  top_n(10, Total)
+
+# Plot
+ggplot(health_impact, aes(x = reorder(EVTYPE, Total), y = Total)) +
+  geom_col(fill = "firebrick") +
+  coord_flip() +
+  labs(title = "Top 10 Weather Events Impacting Population Health",
+       x = "Event Type", y = "Total Fatalities and Injuries")
+```
+
+### 2. Events with Greatest Economic Consequences
+
+```{r economic-impact}
+economic_impact <- storm %>% 
+  group_by(EVTYPE) %>% 
+  summarise(Property = sum(PROPDMGVAL), Crop = sum(CROPDMGVAL)) %>% 
+  mutate(Total = Property + Crop) %>% 
+  arrange(desc(Total)) %>% 
+  top_n(10, Total)
+
+# Plot
+ggplot(economic_impact, aes(x = reorder(EVTYPE, Total), y = Total / 1e9)) +
+  geom_col(fill = "darkgreen") +
+  coord_flip() +
+  labs(title = "Top 10 Weather Events Causing Economic Damage",
+       x = "Event Type", y = "Total Damage (Billion USD)")
+```
+
+---
+
+## Conclusion
+
+The analysis reveals that:
+- **Tornadoes** are by far the most harmful to population health.
+- **Floods** and **hurricanes** cause the most economic damage.
+
+These insights underscore the need for disaster preparedness and mitigation plans targeted at these high-impact event types.
+
+---
+
+## Session Info
+```{r session-info}
+sessionInfo()
