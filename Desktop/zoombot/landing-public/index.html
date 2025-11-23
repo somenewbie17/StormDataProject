@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CourseHub - Smart Learning Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #000000;
+      color: #e6e6e6;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Navigation */
+    nav {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      z-index: 1000;
+      padding: 0;
+    }
+
+    .nav-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.5rem 3rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: -0.8px;
+      color: #ffffff;
+      transition: opacity 0.3s;
+    }
+
+    .logo:hover {
+      opacity: 0.8;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 3.5rem;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: #666666;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.85rem;
+      transition: all 0.3s;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      position: relative;
+    }
+
+    .nav-links a:not(.btn-signin):hover {
+      color: #ffffff;
+    }
+
+    .nav-links a:not(.btn-signin)::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: #b74b4b;
+      transition: width 0.3s;
+    }
+
+    .nav-links a:not(.btn-signin):hover::after {
+      width: 100%;
+    }
+
+    .btn-signin {
+      background: #ffffff;
+      color: #000000;
+      padding: 0.65rem 1.8rem;
+      border-radius: 50px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: all 0.3s;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .btn-signin:hover {
+      background: #e6e6e6;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+    }
+
+    /* Hero Section */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8rem 3rem 4rem;
+      background: #000000;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(183, 75, 75, 0.15) 0%, transparent 70%);
+      top: 20%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .hero-content {
+      max-width: 900px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero h1 {
+      font-size: 4.5rem;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      color: #ffffff;
+      line-height: 1.1;
+      letter-spacing: -2px;
+    }
+
+    .hero-subtitle {
+      font-size: 1.5rem;
+      color: #999999;
+      margin-bottom: 3rem;
+      font-weight: 400;
+      line-height: 1.6;
+    }
+
+    .typing-text {
+      display: inline-block;
+      border-right: 2px solid #b74b4b;
+      padding-right: 4px;
+      animation: blink 0.7s infinite;
+      min-height: 1.1em;
+      min-width: 20px;
+    }
+
+    @keyframes blink {
+      0%, 100% { border-color: transparent; }
+      50% { border-color: #b74b4b; }
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #b74b4b 0%, #d85c5c 100%);
+      color: #ffffff;
+      padding: 1rem 2.5rem;
+      border-radius: 50px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all 0.2s;
+      display: inline-block;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(183, 75, 75, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #d85c5c 0%, #b74b4b 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(183, 75, 75, 0.4);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #ffffff;
+      padding: 1rem 2.5rem;
+      border-radius: 50px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all 0.2s;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: inline-block;
+    }
+
+    .btn-secondary:hover {
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    /* Features Section */
+    .features {
+      padding: 8rem 3rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      background: #000000;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: #ffffff;
+      letter-spacing: -1px;
+    }
+
+    .section-subtitle {
+      text-align: center;
+      color: #666666;
+      font-size: 1.15rem;
+      margin-bottom: 5rem;
+      font-weight: 400;
+      letter-spacing: 0.2px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 1px;
+      background: rgba(42, 42, 42, 0.3);
+    }
+
+    .feature-card {
+      background: #000000;
+      padding: 3rem 2.5rem;
+      transition: all 0.3s;
+      position: relative;
+    }
+
+    .feature-card:hover {
+      background: rgba(15, 15, 15, 1);
+    }
+
+    .feature-card:hover::before {
+      opacity: 1;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 2px;
+      width: 60px;
+      background: #b74b4b;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    /* Feature Tabs */
+    .feature-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 3rem;
+      flex-wrap: wrap;
+    }
+
+    .feature-tab {
+      background: transparent;
+      border: 1px solid rgba(42, 42, 42, 0.8);
+      color: #999999;
+      padding: 0.8rem 2rem;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .feature-tab.active {
+      background: linear-gradient(135deg, #b74b4b 0%, #d85c5c 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 15px rgba(183, 75, 75, 0.3);
+    }
+
+    .feature-tab:hover:not(.active) {
+      border-color: rgba(183, 75, 75, 0.8);
+      color: #ffffff;
+    }
+
+    .feature-category {
+      display: none;
+    }
+
+    .feature-category.active {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 1px;
+      background: rgba(42, 42, 42, 0.3);
+    }
+
+    .feature-card h3 {
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      color: #ffffff;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    .feature-card p {
+      color: #999999;
+      line-height: 1.7;
+      font-size: 0.95rem;
+    }
+
+    /* How It Works Section */
+    .how-it-works {
+      padding: 8rem 3rem;
+      background: #000000;
+    }
+
+    .steps-container {
+      max-width: 1200px;
+      margin: 4rem auto 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 4rem;
+    }
+
+    .step {
+      text-align: left;
+      position: relative;
+      padding: 0;
+      transition: transform 0.2s;
+    }
+
+    .step:hover {
+      transform: translateY(-4px);
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #ffffff;
+      background: rgba(183, 75, 75, 0.1);
+      border: 1px solid rgba(183, 75, 75, 0.2);
+      margin-bottom: 1.5rem;
+      transition: all 0.2s;
+    }
+
+    .step:hover .step-number {
+      background: rgba(183, 75, 75, 0.15);
+      border-color: rgba(183, 75, 75, 0.3);
+    }
+
+    .step h3 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #ffffff;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .step p {
+      color: #666666;
+      line-height: 1.7;
+      font-size: 1rem;
+      font-weight: 400;
+    }
+
+    /* CTA Section */
+    .cta-section {
+      padding: 8rem 3rem;
+      text-align: center;
+      max-width: 900px;
+      margin: 0 auto;
+      background: #000000;
+    }
+
+    .cta-section h2 {
+      font-size: 3rem;
+      margin-bottom: 1.5rem;
+      color: #ffffff;
+      font-weight: 700;
+      letter-spacing: -1px;
+    }
+
+    .cta-section p {
+      font-size: 1.1rem;
+      color: #999999;
+      margin-bottom: 3rem;
+      font-weight: 400;
+    }
+
+    /* Footer */
+    footer {
+      background: #000000;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 5rem 3rem 3rem;
+      text-align: center;
+    }
+
+    .footer-content {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .footer-brand {
+      margin-bottom: 3rem;
+    }
+
+    .footer-brand .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.8px;
+      color: #ffffff;
+      margin-bottom: 0.8rem;
+    }
+
+    .footer-tagline {
+      color: #333333;
+      font-size: 0.9rem;
+      letter-spacing: 0.3px;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 4rem;
+      margin-bottom: 3.5rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      color: #666666;
+      text-decoration: none;
+      transition: all 0.3s;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      position: relative;
+    }
+
+    .footer-links a:hover {
+      color: #ffffff;
+    }
+
+    .footer-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: #b74b4b;
+      transition: width 0.3s;
+    }
+
+    .footer-links a:hover::after {
+      width: 100%;
+    }
+
+    .footer-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.05);
+      margin-bottom: 2rem;
+    }
+
+    .copyright {
+      color: #333333;
+      font-size: 0.8rem;
+      letter-spacing: 0.5px;
+    }
+
+    /* Contact Section */
+    .contact-section {
+      padding: 8rem 3rem 6rem;
+      max-width: 900px;
+      margin: 0 auto;
+      background: #000000;
+    }
+
+    .contact-section h2 {
+      font-size: 2.5rem;
+      margin-bottom: 0.8rem;
+      color: #ffffff;
+      font-weight: 700;
+      letter-spacing: -1px;
+      text-align: center;
+    }
+
+    .contact-section p {
+      font-size: 1rem;
+      color: #666666;
+      margin-bottom: 3.5rem;
+      text-align: center;
+    }
+
+    .contact-form {
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      color: #999999;
+      font-weight: 500;
+      margin-bottom: 0.7rem;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 1rem 0;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(42, 42, 42, 0.8);
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      transition: all 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-bottom-color: #b74b4b;
+    }
+
+    .form-group input::placeholder,
+    .form-group textarea::placeholder {
+      color: #333333;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+      padding-top: 1rem;
+    }
+
+    .form-group select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23999999' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0 center;
+      padding-right: 2rem;
+    }
+
+    .form-group select option {
+      background: #000000;
+      color: #ffffff;
+      padding: 1rem;
+    }
+
+    .submit-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #b74b4b 0%, #d85c5c 100%);
+      color: #ffffff;
+      padding: 1.1rem;
+      border-radius: 50px;
+      border: none;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 1rem;
+      letter-spacing: 0.3px;
+      box-shadow: 0 4px 20px rgba(183, 75, 75, 0.3);
+    }
+
+    .submit-btn:hover {
+      background: linear-gradient(135deg, #d85c5c 0%, #b74b4b 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(183, 75, 75, 0.4);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .nav-container {
+        padding: 1.2rem 1.5rem;
+      }
+
+      .logo {
+        font-size: 1.15rem;
+      }
+
+      .nav-links {
+        gap: 1rem;
+      }
+
+      .nav-links a:not(.btn-signin) {
+        display: none;
+      }
+
+      .btn-signin {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.8rem;
+      }
+
+      .hero {
+        padding: 6rem 1.5rem 3rem;
+        min-height: 85vh;
+      }
+
+      .hero h1 {
+        font-size: 2.2rem;
+        letter-spacing: -1px;
+        margin-bottom: 1.5rem;
+      }
+
+      .hero-subtitle {
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+      }
+
+      .cta-buttons {
+        flex-direction: column;
+        width: 100%;
+        gap: 0.8rem;
+      }
+
+      .btn-primary,
+      .btn-secondary {
+        width: 100%;
+        padding: 0.9rem 2rem;
+      }
+
+      .features {
+        padding: 4rem 1.5rem;
+      }
+
+      .section-title {
+        font-size: 2rem;
+        letter-spacing: -0.5px;
+      }
+
+      .section-subtitle {
+        font-size: 1rem;
+        margin-bottom: 3rem;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+        gap: 1px;
+      }
+
+      .feature-tabs {
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .feature-tab {
+        padding: 0.7rem 1.5rem;
+        font-size: 0.85rem;
+      }
+
+      .feature-category {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-card {
+        padding: 2rem 1.5rem;
+      }
+
+      .feature-card h3 {
+        font-size: 1.2rem;
+      }
+
+      .feature-card p {
+        font-size: 0.9rem;
+      }
+
+      .how-it-works {
+        padding: 4rem 1.5rem;
+      }
+
+      .steps-container {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+      }
+
+      .step {
+        padding-left: 3.5rem;
+      }
+
+      .step-number {
+        width: 45px;
+        height: 45px;
+        font-size: 1.2rem;
+      }
+
+      .step h3 {
+        font-size: 1.3rem;
+      }
+
+      .step p {
+        font-size: 0.9rem;
+      }
+
+      .cta-section {
+        padding: 4rem 1.5rem;
+      }
+
+      .cta-section h2 {
+        font-size: 2rem;
+      }
+
+      .cta-section p {
+        font-size: 1rem;
+      }
+
+      .contact-section {
+        padding: 4rem 1.5rem 3rem;
+      }
+
+      .contact-section h2 {
+        font-size: 2rem;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+
+      .form-group input,
+      .form-group select,
+      .form-group textarea {
+        font-size: 0.95rem;
+      }
+
+      footer {
+        padding: 4rem 1.5rem 2.5rem;
+      }
+
+      .footer-brand {
+        margin-bottom: 2.5rem;
+      }
+
+      .footer-links {
+        gap: 2rem;
+        flex-direction: column;
+        margin-bottom: 2.5rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero h1 {
+        font-size: 1.8rem;
+      }
+
+      .hero-subtitle {
+        font-size: 1rem;
+      }
+
+      .section-title {
+        font-size: 1.7rem;
+      }
+
+      .cta-section h2 {
+        font-size: 1.7rem;
+      }
+
+      .contact-section h2 {
+        font-size: 1.7rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav>
+    <div class="nav-container">
+      <div class="logo">🎯 CourseHub</div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#contact">Contact</a>
+        <a href="http://localhost:3002/auth" class="btn-signin">Sign In</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1>Your Lectures, <span class="typing-text"></span></h1>
+      <p class="hero-subtitle">We automatically record your classes, organize your schedule, and keep everything in one place.</p>
+      <div class="cta-buttons">
+        <a href="http://localhost:3002/auth" class="btn-primary">Get Started Free</a>
+        <a href="#how-it-works" class="btn-secondary">Learn More</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features" id="features">
+    <h2 class="section-title">Everything You Need in One Place</h2>
+    <p class="section-subtitle">Your complete academic companion</p>
+    
+    <div class="feature-tabs">
+      <button class="feature-tab active" data-category="recordings">Recordings & Classes</button>
+      <button class="feature-tab" data-category="resources">Resources & Materials</button>
+      <button class="feature-tab" data-category="tools">Smart Tools</button>
+    </div>
+
+    <div class="feature-category active" data-category="recordings">
+      <div class="feature-card">
+        <h3>Automatic Recording</h3>
+        <p>We record every class for you automatically. Never miss a lecture again.</p>
+      </div>
+
+      <div class="feature-card">
+        <h3>Your Calendar, Built for You</h3>
+        <p>We create and organize your class schedule automatically. Everything stays perfectly organized.</p>
+      </div>
+
+      <div class="feature-card">
+        <h3>Access Anywhere</h3>
+        <p>All your classes, notes, and materials available on any device, anytime.</p>
+      </div>
+    </div>
+
+    <div class="feature-category" data-category="resources">
+      <div class="feature-card">
+        <h3>Resource Library</h3>
+        <p>Get access to a full library of study resources, past papers, and course materials all in one place.</p>
+      </div>
+
+      <div class="feature-card">
+        <h3>Lecturer Contacts & Info</h3>
+        <p>Quick access to all your lecturer contact details and office hours organized by course.</p>
+      </div>
+
+      <div class="feature-card">
+        <h3>Upload & Organize Materials</h3>
+        <p>Upload your notes, documents, and study materials. Attach them directly to recordings and keep everything together.</p>
+      </div>
+    </div>
+
+    <div class="feature-category" data-category="tools">
+      <div class="feature-card">
+        <h3>AI Document Chat</h3>
+        <p>Chat with AI about your uploaded documents and recordings. Get instant answers from your study materials.</p>
+      </div>
+
+      <div class="feature-card">
+        <h3>Smart Chapters</h3>
+        <p>Jump to any topic instantly with automatic chapter markers. No more scrubbing through hours of video.</p>
+      </div>
+
+      <div class="feature-card">
+        <h3>Search Everything</h3>
+        <p>Find exactly what you're looking for across all your lectures, notes, and documents in seconds.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section class="how-it-works" id="how-it-works">
+    <h2 class="section-title">How It Works</h2>
+    <p class="section-subtitle">Set it up once, then forget about it</p>
+    
+    <div class="steps-container">
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3>Sign Up</h3>
+        <p>Create your account and connect your class schedule. Takes less than 2 minutes.</p>
+      </div>
+
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3>Access Your Classes</h3>
+        <p>Your classes are captured and organized. Your calendar is built for you. Just show up to class.</p>
+      </div>
+
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>Study Smarter</h3>
+        <p>Review recordings, add your notes and files, search for any topic. All your materials in one place.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <h2>Never Miss a Lecture Again</h2>
+    <p>Join students who stay organized and never lose track of their academic materials.</p>
+    <div class="cta-buttons">
+      <a href="http://localhost:3002/auth" class="btn-primary">Start Free Today</a>
+      <a href="https://wa.me/YOUR_WHATSAPP_NUMBER" target="_blank" class="btn-secondary" style="background: #25D366; color: white; border: none;">Join Our Community</a>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section class="contact-section" id="contact">
+    <h2>Need to Reach Out?</h2>
+    <p>Can't find your course? Have suggestions? We're here to help.</p>
+    
+    <form class="contact-form" id="contactForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name">Name</label>
+          <input type="text" id="name" name="name" placeholder="John Doe" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="john@example.com" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="issueType">How can we help?</label>
+        <select id="issueType" name="issueType" required>
+          <option value="">Select an option</option>
+          <option value="missing-course">My course/lecture isn't available</option>
+          <option value="recording-request">Request access to a lecture recording</option>
+          <option value="suggestion">General suggestion or feedback</option>
+          <option value="technical">Technical issue</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="message">Message</label>
+        <textarea id="message" name="message" placeholder="Tell us more about your request..." required></textarea>
+      </div>
+
+      <button type="submit" class="submit-btn">Send Message</button>
+    </form>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-content">
+      <div class="footer-brand">
+        <div class="logo">🎯 CourseHub</div>
+        <p class="footer-tagline">Your Smart Learning Platform</p>
+      </div>
+      
+      <div class="footer-links">
+        <a href="/privacy.html">Privacy Policy</a>
+        <a href="/terms.html">Terms of Service</a>
+        <a href="#contact">Contact</a>
+        <a href="/support.html">Support</a>
+      </div>
+      
+      <div class="footer-divider"></div>
+      
+      <p class="copyright">© 2025 CourseHub. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Typing effect for hero
+    const phrases = [
+      "Organized",
+      "Searchable",
+      "On Demand",
+      "Supercharged"
+    ];
+    let phraseIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+    let isPaused = false;
+
+    function type() {
+      const typingElement = document.querySelector('.typing-text');
+      if (!typingElement) return;
+
+      const currentPhrase = phrases[phraseIndex];
+      
+      if (isPaused) {
+        isPaused = false;
+        setTimeout(type, 2000);
+        return;
+      }
+
+      if (isDeleting) {
+        typingElement.textContent = currentPhrase.substring(0, charIndex--);
+        if (charIndex < 0) {
+          isDeleting = false;
+          phraseIndex = (phraseIndex + 1) % phrases.length;
+          setTimeout(type, 500);
+          return;
+        }
+      } else {
+        typingElement.textContent = currentPhrase.substring(0, charIndex++);
+        if (charIndex > currentPhrase.length) {
+          isDeleting = true;
+          isPaused = true;
+          setTimeout(type, 2000);
+          return;
+        }
+      }
+      
+      setTimeout(type, isDeleting ? 50 : 100);
+    }
+
+    // Start typing effect when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(type, 500);
+    });
+
+    // Feature tabs
+    const featureTabs = document.querySelectorAll('.feature-tab');
+    const featureCategories = document.querySelectorAll('.feature-category');
+
+    featureTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const category = tab.getAttribute('data-category');
+        
+        // Remove active class from all tabs and categories
+        featureTabs.forEach(t => t.classList.remove('active'));
+        featureCategories.forEach(c => c.classList.remove('active'));
+        
+        // Add active class to clicked tab and corresponding category
+        tab.classList.add('active');
+        document.querySelector(`.feature-category[data-category="${category}"]`).classList.add('active');
+      });
+    });
+
+    // Contact form handling
+    document.getElementById('contactForm')?.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const formData = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        issueType: document.getElementById('issueType').value,
+        message: document.getElementById('message').value
+      };
+
+      // For now, just show a success message
+      // TODO: Implement actual form submission to backend
+      alert('Thank you for reaching out! We\'ll get back to you within 24 hours.');
+      this.reset();
+    });
+  </script>
+</body>
+</html>

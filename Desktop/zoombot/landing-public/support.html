@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support - CourseHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #000000;
+      color: #e6e6e6;
+      line-height: 1.6;
+    }
+
+    nav {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      z-index: 1000;
+    }
+
+    .nav-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.5rem 3rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: -0.8px;
+      color: #ffffff;
+      text-decoration: none;
+    }
+
+    .content {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 10rem 3rem 5rem;
+    }
+
+    h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 1rem;
+      letter-spacing: -1px;
+    }
+
+    .subtitle {
+      color: #666666;
+      font-size: 1.15rem;
+      margin-bottom: 4rem;
+    }
+
+    h2 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin: 3rem 0 1.5rem;
+      letter-spacing: -0.5px;
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin: 2rem 0 1rem;
+    }
+
+    p {
+      color: #999999;
+      font-size: 1rem;
+      line-height: 1.8;
+      margin-bottom: 1.5rem;
+    }
+
+    .faq-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      transition: all 0.2s;
+    }
+
+    .faq-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .faq-question {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 0.75rem;
+    }
+
+    .faq-answer {
+      color: #999999;
+      line-height: 1.8;
+      margin-bottom: 0;
+    }
+
+    .contact-methods {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 2rem;
+      margin: 3rem 0;
+    }
+
+    .contact-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .contact-card:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(183, 75, 75, 0.3);
+      transform: translateY(-4px);
+    }
+
+    .contact-icon {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(183, 75, 75, 0.1);
+      border-radius: 12px;
+      border: 1px solid rgba(183, 75, 75, 0.2);
+    }
+
+    .contact-icon svg {
+      width: 28px;
+      height: 28px;
+      stroke: #b74b4b;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .contact-card h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.15rem;
+    }
+
+    .contact-card p {
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #b74b4b 0%, #d85c5c 100%);
+      color: #ffffff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: linear-gradient(135deg, #d85c5c 0%, #b74b4b 100%);
+      transform: translateY(-2px);
+    }
+
+    .status-badge {
+      display: inline-block;
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 2rem;
+    }
+
+    ul {
+      color: #999999;
+      margin-left: 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    li {
+      margin-bottom: 0.75rem;
+      line-height: 1.8;
+    }
+
+    strong {
+      color: #e6e6e6;
+      font-weight: 600;
+    }
+
+    footer {
+      background: #000000;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 3rem;
+      text-align: center;
+    }
+
+    footer a {
+      color: #666666;
+      text-decoration: none;
+      margin: 0 1rem;
+      transition: color 0.2s;
+    }
+
+    footer a:hover {
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-container">
+      <a href="/" class="logo">🎯 CourseHub</a>
+    </div>
+  </nav>
+
+  <div class="content">
+    <h1>Support Center</h1>
+    <p class="subtitle">We're here to help you get the most out of CourseHub</p>
+    
+    <div class="status-badge">✓ All Systems Operational</div>
+
+    <h2>Contact Us</h2>
+    <div class="contact-methods">
+      <div class="contact-card">
+        <div class="contact-icon">
+          <svg viewBox="0 0 24 24">
+            <rect x="3" y="5" width="18" height="14" rx="2"/>
+            <polyline points="3 7 12 13 21 7"/>
+          </svg>
+        </div>
+        <h3>Email Support</h3>
+        <p>Get help via email within 24 hours</p>
+        <a href="mailto:support@coursehub.com" class="btn">Send Email</a>
+      </div>
+
+      <div class="contact-card">
+        <div class="contact-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <h3>Live Chat</h3>
+        <p>Chat with our team (Mon-Fri, 9am-6pm)</p>
+        <a href="/#contact" class="btn">Start Chat</a>
+      </div>
+
+      <div class="contact-card">
+        <div class="contact-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <h3>Community</h3>
+        <p>Join our WhatsApp community</p>
+        <a href="https://wa.me/YOUR_WHATSAPP_NUMBER" target="_blank" class="btn">Join Now</a>
+      </div>
+    </div>
+
+    <h2>Frequently Asked Questions</h2>
+
+    <div class="faq-item">
+      <div class="faq-question">How do I sign up for CourseHub?</div>
+      <div class="faq-answer">
+        Click the "Sign In" or "Get Started Free" button, create an account with your email, and connect your class schedule. The entire process takes less than 2 minutes.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">Will all my classes be available?</div>
+      <div class="faq-answer">
+        We make our best effort to provide recordings for all scheduled classes at the University of Guyana and other partner institutions. However, technical issues, institutional policies, platform limitations, connectivity problems, or power outages may prevent some content from being available. Given infrastructure constraints in Guyana, CourseHub operates on a "best effort" basis and should be used as a supplementary tool alongside your own note-taking. Always attend class and take your own notes as backup.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">What if content is unavailable?</div>
+      <div class="faq-answer">
+        Content may be unavailable due to various technical or operational reasons. While we strive for 100% availability, we cannot guarantee every class will have recordings. We recommend always attending class and taking your own notes as a backup. If you experience consistent availability issues, please contact support.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">Can I download my recordings?</div>
+      <div class="faq-answer">
+        Yes, paid subscribers can download recordings for offline viewing. Downloads are subject to storage limits and may expire based on your subscription plan.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">How accurate are the transcripts?</div>
+      <div class="faq-answer">
+        Our AI-powered transcription is generally accurate, but may contain errors depending on audio quality, accents, technical terms, and background noise. Always verify important information against the original recording or your class materials.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">Is my data secure and private?</div>
+      <div class="faq-answer">
+        Yes. We use industry-standard encryption and security measures to protect your data. We do not sell your personal information. Read our <a href="/privacy.html" style="color: #b74b4b;">Privacy Policy</a> for complete details.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">Can I share recordings with classmates?</div>
+      <div class="faq-answer">
+        Recordings are for your personal educational use only. Sharing, redistributing, or selling recordings violates our Terms of Service and may infringe on intellectual property rights. Respect your instructors' and institution's policies.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">What browsers and devices are supported?</div>
+      <div class="faq-answer">
+        CourseHub works on modern browsers (Chrome, Firefox, Safari, Edge) and is accessible on desktop, laptop, tablet, and mobile devices. For the best experience, we recommend using the latest browser version.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">How do I cancel my subscription?</div>
+      <div class="faq-answer">
+        You can cancel anytime through your account settings. Your access will continue until the end of your current billing period. No refunds are provided for partial periods.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">My course isn't showing up. What do I do?</div>
+      <div class="faq-answer">
+        First, verify your schedule is correctly synced in your account settings. If the issue persists, contact us via the form on our homepage or email support with your course details.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">Which institutions do you support in Guyana?</div>
+      <div class="faq-answer">
+        We currently support the University of Guyana and are expanding to other educational institutions. If your school isn't supported yet, contact us to express interest and we'll prioritize adding it.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">What happens during internet or power outages?</div>
+      <div class="faq-answer">
+        If there's an internet or power outage during a scheduled class recording, the recording may fail or be incomplete. This is beyond our control. We recommend always taking your own notes and not relying solely on recordings, especially given infrastructure challenges in Guyana.
+      </div>
+    </div>
+
+    <h2>Common Issues & Solutions</h2>
+
+    <h3>Recording Quality Issues</h3>
+    <ul>
+      <li><strong>Low audio quality:</strong> This is often due to the source audio quality from the instructor's setup. Unfortunately, we cannot improve source quality.</li>
+      <li><strong>Missing video:</strong> Some classes may only capture audio if video is disabled by the instructor or platform.</li>
+      <li><strong>Choppy playback:</strong> Try refreshing the page or checking your internet connection.</li>
+    </ul>
+
+    <h3>Login & Account Issues</h3>
+    <ul>
+      <li><strong>Forgot password:</strong> Use the "Forgot Password" link on the login page to reset.</li>
+      <li><strong>Email not recognized:</strong> Ensure you're using the same email address you registered with.</li>
+      <li><strong>Account locked:</strong> Contact support if you've been locked out due to failed login attempts.</li>
+    </ul>
+
+    <h3>Sync & Schedule Issues</h3>
+    <ul>
+      <li><strong>Classes not syncing:</strong> Disconnect and reconnect your calendar in account settings.</li>
+      <li><strong>Wrong time zone:</strong> Check your time zone settings in your profile.</li>
+      <li><strong>Outdated schedule:</strong> Schedules update periodically. Manual refresh options are available in settings.</li>
+    </ul>
+
+    <h2>Report a Problem</h2>
+    <p>If you're experiencing an issue not covered here, please reach out:</p>
+    <ul>
+      <li><strong>Technical Issues:</strong> Email <a href="mailto:support@coursehub.com" style="color: #b74b4b;">support@coursehub.com</a> with details</li>
+      <li><strong>Missing Recordings:</strong> Provide the course name, date, and time</li>
+      <li><strong>Billing Questions:</strong> Email <a href="mailto:billing@coursehub.com" style="color: #b74b4b;">billing@coursehub.com</a></li>
+      <li><strong>Privacy Concerns:</strong> Email <a href="mailto:privacy@coursehub.com" style="color: #b74b4b;">privacy@coursehub.com</a></li>
+    </ul>
+
+    <h2>Response Times</h2>
+    <ul>
+      <li><strong>Email Support:</strong> Within 24 hours (business days)</li>
+      <li><strong>Live Chat:</strong> Immediate (during business hours)</li>
+      <li><strong>Critical Issues:</strong> Priority response within 4 hours</li>
+    </ul>
+
+    <p style="margin-top: 3rem; padding: 2rem; background: rgba(255, 255, 255, 0.02); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);">
+      <strong>Still need help?</strong> Visit our <a href="/#contact" style="color: #b74b4b;">Contact page</a> or send us a message directly. We're committed to helping you succeed!
+    </p>
+  </div>
+
+  <footer>
+    <a href="/">Home</a>
+    <a href="/privacy.html">Privacy Policy</a>
+    <a href="/terms.html">Terms of Service</a>
+    <a href="/support.html">Support</a>
+  </footer>
+</body>
+</html>
