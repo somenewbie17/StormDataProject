@@ -1,0 +1,247 @@
+// Law Recordings API - Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// User model - represents students/users
+model User {
+  id                  String   @id @default(cuid())
+  email               String   @unique
+  name                String
+  password            String   @default("changeme") // bcrypt hashed password
+  studentId           String?
+  
+  // Subscription tier
+  tier                String   @default("free")  // "free", "pro", "premium"
+  subscriptionStatus  String   @default("active") // "active", "canceled", "past_due"
+  
+  // Program access (for Pro tier - limits to one program)
+  registeredProgram   String?  // "law", "international-relations", "engineering", etc.
+  
+  // Payment info (Guyana-focused)
+  paymentMethod       String?  // "mmg", "bank_gbti", "bank_demerara", "bank_republic", "paypal", "stripe"
+  mmgPhone            String?
+  signupWeek          Int?     // Week they signed up (for dynamic pricing)
+  subscriptionAmountGyd Int?   // Their locked-in price in GYD
+  paymentGatewayId    String?  // Transaction/customer ID from payment provider
+  
+  // Subscription lifecycle
+  subscriptionStartedAt DateTime?
+  subscriptionEndsAt    DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relations
+  recordingAccess UserRecordingAccess[]
+  
+  @@map("users")
+}
+
+// Recording model - represents bot recordings
+// ⚠️ CRITICAL: recordedAt MUST be stored in UTC! Never use local time!
+// This prevents date shifting across timezones (e.g., Nov 13 becoming Nov 12)
+model Recording {
+  id            String   @id @default(cuid())
+  botId         String   @unique
+  
+  // Course identification
+  courseCode    String   // "LAW2109", "IR301", "ENG205"
+  courseName    String   // "Property Law", "International Relations Theory"
+  program       String   @default("general") // "law", "international-relations", "engineering", etc.
+  
+  // Recording details
+  recordedAt    DateTime // ⚠️ ALWAYS UTC! Add 'Z' suffix when parsing strings
+  duration      Int      // seconds
+  videoPath     String   // Local file path or OneDrive URL
+  audioPath     String?  // Audio file path
+  transcriptPath String?
+  
+  // Access control
+  status        String   @default("processing")  // "processing", "ready", "failed", "done"
+  accessLevel   String   @default("premium")     // "free", "premium", "pro"
+  
+  // Metadata
+  metadata      String?  // JSON blob for additional info
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  users         UserRecordingAccess[]
+  
+  @@index([program])  // Index for fast program-based filtering
+  @@map("recordings")
+}
+
+// Junction table for user-recording access
+model UserRecordingAccess {
+  userId       String
+  recordingId  String
+  grantedAt    DateTime @default(now())
+  expiresAt    DateTime?
+  
+  // Relations
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recording    Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  
+  @@id([userId, recordingId])
+  @@map("user_recording_access")
+}
+
+// Course model - represents law classes
+model Course {
+  code         String   @id  // "LAW2109"
+  name         String
+  schedule     String   // JSON: {day: "MON", time: "14:00", duration: 90}
+  zoomLink     String
+  semester     String
+  accessLevel  String   @default("premium")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@map("courses")
+}
+
+// ========================================
+// PERSONAL RESOURCE LIBRARY SYSTEM
+// ========================================
+
+// Folder model - organize resources into folders
+model Folder {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String   // "Contract Law Notes", "Exam Prep"
+  color       String?  // Hex color for UI
+  icon        String?  // Emoji or icon name
+  parentId    String?  // For nested folders
+  order       Int      @default(0)  // Custom ordering
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  parent      Folder?   @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Folder[]  @relation("FolderHierarchy")
+  resources   Resource[]
+  
+  @@map("folders")
+  @@index([userId])
+}
+
+// Resource model - user-uploaded files and documents
+model Resource {
+  id            String   @id @default(cuid())
+  userId        String
+  folderId      String?
+  
+  // File information
+  title         String
+  description   String?
+  fileType      String   // "pdf", "docx", "pptx", "image", "video", "audio", "link"
+  fileName      String   // Original filename
+  filePath      String   // Path in OneDrive or storage
+  fileSize      Int      // Bytes
+  mimeType      String
+  
+  // Metadata
+  courseCode    String?  // Optional link to course
+  uploadedAt    DateTime @default(now())
+  lastAccessedAt DateTime?
+  
+  // Organization
+  isPinned      Boolean  @default(false)
+  isArchived    Boolean  @default(false)
+  color         String?  // For color-coding
+  
+  // Versioning
+  version       Int      @default(1)
+  previousVersionId String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  folder        Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  tags          ResourceTag[]
+  notes         ResourceNote[]
+  shares        ResourceShare[]
+  previousVersion Resource? @relation("ResourceVersions", fields: [previousVersionId], references: [id], onDelete: SetNull)
+  versions      Resource[] @relation("ResourceVersions")
+  
+  @@map("resources")
+  @@index([userId])
+  @@index([courseCode])
+  @@index([folderId])
+}
+
+// Tag model - for categorizing resources
+model Tag {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String   // "midterm", "important", "week5"
+  color       String?
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  resources   ResourceTag[]
+  
+  @@unique([userId, name])
+  @@map("tags")
+}
+
+// Junction table for resource-tag relationship
+model ResourceTag {
+  resourceId  String
+  tagId       String
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  resource    Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  tag         Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@id([resourceId, tagId])
+  @@map("resource_tags")
+}
+
+// ResourceNote model - notes attached to resources
+model ResourceNote {
+  id          String   @id @default(cuid())
+  resourceId  String
+  userId      String
+  content     String   // Markdown supported
+  timestamp   Int?     // For video/audio resources (seconds)
+  position    String?  // For PDF resources (page number or coordinates)
+  color       String?  // Highlight color
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  resource    Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  
+  @@map("resource_notes")
+  @@index([resourceId])
+  @@index([userId])
+}
+
+// ResourceShare model - sharing resources with other users
+model ResourceShare {
+  id          String   @id @default(cuid())
+  resourceId  String
+  sharedBy    String   // User ID who shared
+  sharedWith  String   // User ID or "public" for public links
+  permission  String   @default("view")  // "view", "edit"
+  expiresAt   DateTime?
+  accessCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  resource    Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  
+  @@map("resource_shares")
+  @@index([resourceId])
+  @@index([sharedWith])
+}

@@ -1,0 +1,964 @@
+/**
+ * Law Recordings Central API
+ * 
+ * Purpose: Single source of truth for recordings, users, and access control
+ * 
+ * Architecture:
+ * - SQLite database (easy to migrate to PostgreSQL later)
+ * - No auth yet (uses mock userId, ready for Supabase integration)
+ * - REST API for both law app and future community app
+ * - Receives webhooks from zoombot when recordings are ready
+ * 
+ * Pros:
+ * - Centralized permission logic
+ * - Multiple frontends can connect (law app, community app, mobile)
+ * - Easy to add features (analytics, social, purchases)
+ * - Database handles concurrency/consistency
+ * 
+ * Cons:
+ * - Adds network latency (law app → API → database)
+ * - Need to run API server (but simple with Railway/Heroku)
+ * - More complex than direct file access
+ * 
+ * Alternative: Direct file system (current webhook-server.mjs approach)
+ * - Pros: Simpler, no API needed, works offline
+ * - Cons: Can't scale to multiple users, no permission system, hard to add community features
+ */
+
+const express = require('express');
+const cors = require('cors');
+const { PrismaClient } = require('@prisma/client');
+const path = require('path');
+
+const app = express();
+const prisma = new PrismaClient();
+
+// Middleware
+app.use(cors()); // Allow law app + community app to connect
+app.use(express.json());
+
+// Serve uploaded files statically
+// DISABLED: No server-side uploads
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+require('./webhooks')(app);
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ===== RECORDINGS API =====
+
+/**
+ * GET /api/recordings
+ * Get recordings for a user (filtered by access level and permissions)
+ * 
+ * Query params:
+ * - userId: User ID (mock for now, will come from JWT token later)
+ * - courseCode: Optional filter by course (e.g., "LAW2109")
+ * - classDate: Optional ISO date string for the class session (e.g., "2025-11-18")
+ * - classTime: Optional time in HH:MM format (e.g., "17:15")
+ * - timeWindow: Optional time window in minutes (default: 120 = ±2 hours)
+ */
+app.get('/api/recordings', async (req, res) => {
+  try {
+    const { userId, courseCode, classDate, classTime, timeWindow } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
+    }
+
+    // Get user to check tier
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Build query based on user tier
+    let where = { 
+      status: { in: ['ready', 'done'] } // Accept both ready and done statuses
+    };
+    
+    if (courseCode) {
+      where.courseCode = courseCode;
+    }
+
+    // Time-based filtering (optional)
+    // ⚠️ CRITICAL: Use UTC consistently to prevent timezone shifts!
+    if (classDate && classTime) {
+      const windowMinutes = parseInt(timeWindow) || 120; // Default 2 hours
+      
+      // Parse class date and time in UTC (add Z to force UTC interpretation!)
+      const [hours, minutes] = classTime.split(':').map(Number);
+      const classDateTime = new Date(classDate + 'T00:00:00Z'); // Z = UTC!
+      classDateTime.setUTCHours(hours, minutes, 0, 0); // Use UTC methods!
+      
+      // Calculate time window
+      const startTime = new Date(classDateTime.getTime() - windowMinutes * 60 * 1000);
+      const endTime = new Date(classDateTime.getTime() + windowMinutes * 60 * 1000);
+      
+      where.recordedAt = {
+        gte: startTime,
+        lte: endTime
+      };
+    }
+
+    // TIER-BASED ACCESS CONTROL
+    let recordings;
+    
+    if (user.tier === 'free') {
+      // Free users: Get recordings but strip full content (only AI chapters)
+      recordings = await prisma.recording.findMany({ where });
+      
+      // Remove video/audio/transcript paths - Free users only get AI chapters
+      recordings = recordings.map(rec => ({
+        ...rec,
+        videoPath: null,
+        audioPath: null,
+        transcriptPath: null,
+        _accessLevel: 'chapters-only' // Flag for frontend
+      }));
+      
+    } else if (user.tier === 'pro') {
+      // Pro users: ONLY their registered program
+      if (!user.registeredProgram) {
+        return res.status(403).json({ 
+          error: 'No program registered',
+          message: 'Pro tier requires program selection. Please select your program.',
+          action: 'select_program'
+        });
+      }
+      
+      // Filter by user's registered program
+      where.program = user.registeredProgram;
+      recordings = await prisma.recording.findMany({ where });
+      
+      console.log(`🎓 Pro user (${user.email}) accessing program: ${user.registeredProgram}`);
+      
+    } else if (user.tier === 'premium') {
+      // Premium users: ALL recordings across all programs
+      recordings = await prisma.recording.findMany({ where });
+      console.log(`👑 Premium user (${user.email}) accessing all recordings`);
+      
+    } else {
+      // Invalid/unknown tier
+      return res.status(403).json({ 
+        error: 'Invalid subscription tier',
+        message: 'Please upgrade to access recordings'
+      });
+    }
+
+    res.json(recordings);
+  } catch (error) {
+    console.error('Error fetching recordings:', error);
+    res.status(500).json({ error: 'Failed to fetch recordings' });
+  }
+});
+
+/**
+ * GET /api/recordings/:id
+ * Get single recording details
+ */
+app.get('/api/recordings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
+    }
+
+    const recording = await prisma.recording.findUnique({
+      where: { id }
+    });
+
+    if (!recording) {
+      return res.status(404).json({ error: 'Recording not found' });
+    }
+
+    // Check access
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    const hasAccess = user.tier === 'enterprise' || 
+                     await prisma.userRecordingAccess.findFirst({
+                       where: { userId, recordingId: id }
+                     });
+
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    res.json(recording);
+  } catch (error) {
+    console.error('Error fetching recording:', error);
+    res.status(500).json({ error: 'Failed to fetch recording' });
+  }
+});
+
+/**
+ * PATCH /api/recordings/:id
+ * Update recording metadata (courseCode, courseName, etc.)
+ */
+app.patch('/api/recordings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { courseCode, courseName, status, accessLevel, recordedAt, duration } = req.body;
+
+    const recording = await prisma.recording.findUnique({
+      where: { id }
+    });
+
+    if (!recording) {
+      return res.status(404).json({ error: 'Recording not found' });
+    }
+
+    // Build update data
+    const updateData = {};
+    if (courseCode !== undefined) updateData.courseCode = courseCode;
+    if (courseName !== undefined) updateData.courseName = courseName;
+    if (status !== undefined) updateData.status = status;
+    if (accessLevel !== undefined) updateData.accessLevel = accessLevel;
+    if (recordedAt !== undefined) updateData.recordedAt = new Date(recordedAt);
+    if (duration !== undefined) updateData.duration = duration;
+    updateData.updatedAt = new Date();
+
+    const updatedRecording = await prisma.recording.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json(updatedRecording);
+  } catch (error) {
+    console.error('Error updating recording:', error);
+    res.status(500).json({ error: 'Failed to update recording' });
+  }
+});
+
+/**
+ * POST /api/recordings
+ * Create new recording (called by webhook-server.mjs)
+ */
+app.post('/api/recordings', async (req, res) => {
+  try {
+    const {
+      botId,
+      courseCode,
+      courseName,
+      program,
+      recordedAt,
+      duration,
+      videoPath,
+      audioPath,
+      transcriptPath,
+      status = 'ready',
+      accessLevel = 'premium',
+      metadata
+    } = req.body;
+
+    // Validation
+    if (!botId || !courseCode || !courseName) {
+      return res.status(400).json({ 
+        error: 'botId, courseCode, and courseName are required' 
+      });
+    }
+
+    // Create or update recording
+    const recording = await prisma.recording.upsert({
+      where: { botId },
+      create: {
+        botId,
+        courseCode,
+        courseName,
+        program: program || 'general',
+        recordedAt: recordedAt ? new Date(recordedAt) : new Date(),
+        duration: duration || 0,
+        videoPath: videoPath || '',
+        audioPath: audioPath || null,
+        transcriptPath,
+        status,
+        accessLevel,
+        metadata: metadata ? JSON.stringify(metadata) : null
+      },
+      update: {
+        program: program || undefined,
+        status,
+        videoPath: videoPath || undefined,
+        audioPath: audioPath || undefined,
+        transcriptPath: transcriptPath || undefined,
+        duration: duration || undefined
+      }
+    });
+
+    // Auto-grant access to all premium/enterprise users for this course
+    // (You can customize this logic based on course enrollments)
+    const eligibleUsers = await prisma.user.findMany({
+      where: {
+        tier: { in: ['premium', 'enterprise'] }
+      }
+    });
+
+    // Grant access to all eligible users
+    for (const user of eligibleUsers) {
+      await prisma.userRecordingAccess.upsert({
+        where: {
+          userId_recordingId: {
+            userId: user.id,
+            recordingId: recording.id
+          }
+        },
+        create: {
+          userId: user.id,
+          recordingId: recording.id
+        },
+        update: {}
+      });
+    }
+
+    res.status(201).json(recording);
+  } catch (error) {
+    console.error('Error creating recording:', error);
+    res.status(500).json({ error: 'Failed to create recording' });
+  }
+});
+
+// ===== USERS API =====
+
+/**
+ * GET /api/users/:id
+ * Get user profile
+ */
+app.get('/api/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        recordingAccess: {
+          include: {
+            recording: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+/**
+ * POST /api/users
+ * Create new user (for testing, will be handled by Supabase later)
+ */
+app.post('/api/users', async (req, res) => {
+  try {
+    const { email, name, tier = 'free' } = req.body;
+
+    if (!email || !name) {
+      return res.status(400).json({ error: 'email and name required' });
+    }
+
+    const user = await prisma.user.create({
+      data: { email, name, tier }
+    });
+
+    res.status(201).json(user);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+/**
+ * PATCH /api/users/:id
+ * Update user (e.g., upgrade tier)
+ */
+app.patch('/api/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tier, name } = req.body;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(tier && { tier }),
+        ...(name && { name })
+      }
+    });
+
+    res.json(user);
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// ===== COURSES API =====
+
+/**
+ * GET /api/courses
+ * Get all courses (or filtered by user access)
+ */
+app.get('/api/courses', async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    // For now, return all courses
+    // Later: filter by user's course enrollments
+    const courses = await prisma.course.findMany({
+      orderBy: { code: 'asc' }
+    });
+
+    res.json(courses);
+  } catch (error) {
+    console.error('Error fetching courses:', error);
+    res.status(500).json({ error: 'Failed to fetch courses' });
+  }
+});
+
+/**
+ * POST /api/courses
+ * Create/import courses from calendar
+ */
+app.post('/api/courses', async (req, res) => {
+  try {
+    const { code, name, schedule, zoomLink, semester, accessLevel = 'premium' } = req.body;
+
+    if (!code || !name) {
+      return res.status(400).json({ error: 'code and name required' });
+    }
+
+    const course = await prisma.course.upsert({
+      where: { code },
+      create: {
+        code,
+        name,
+        schedule: schedule ? JSON.stringify(schedule) : null,
+        zoomLink: zoomLink || '',
+        semester: semester || 'Fall 2025',
+        accessLevel
+      },
+      update: {
+        name,
+        schedule: schedule ? JSON.stringify(schedule) : undefined,
+        zoomLink: zoomLink || undefined,
+        accessLevel: accessLevel || undefined
+      }
+    });
+
+    res.status(201).json(course);
+  } catch (error) {
+    console.error('Error creating course:', error);
+    res.status(500).json({ error: 'Failed to create course' });
+  }
+});
+
+// ===== ACCESS CONTROL =====
+
+/**
+ * POST /api/access/grant
+ * Grant user access to specific recording (for purchases/unlocks)
+ */
+app.post('/api/access/grant', async (req, res) => {
+  try {
+    const { userId, recordingId, expiresAt } = req.body;
+
+    if (!userId || !recordingId) {
+      return res.status(400).json({ error: 'userId and recordingId required' });
+    }
+
+    const access = await prisma.userRecordingAccess.upsert({
+      where: {
+        userId_recordingId: { userId, recordingId }
+      },
+      create: {
+        userId,
+        recordingId,
+        expiresAt: expiresAt ? new Date(expiresAt) : null
+      },
+      update: {
+        expiresAt: expiresAt ? new Date(expiresAt) : undefined
+      }
+    });
+
+    res.status(201).json(access);
+  } catch (error) {
+    console.error('Error granting access:', error);
+    res.status(500).json({ error: 'Failed to grant access' });
+  }
+});
+
+/**
+ * DELETE /api/access/revoke
+ * Revoke user access to recording
+ */
+app.delete('/api/access/revoke', async (req, res) => {
+  try {
+    const { userId, recordingId } = req.body;
+
+    if (!userId || !recordingId) {
+      return res.status(400).json({ error: 'userId and recordingId required' });
+    }
+
+    await prisma.userRecordingAccess.delete({
+      where: {
+        userId_recordingId: { userId, recordingId }
+      }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error revoking access:', error);
+    res.status(500).json({ error: 'Failed to revoke access' });
+  }
+});
+
+// ===== RESOURCE LIBRARY API =====
+
+const multer = require('multer');
+const fs = require('fs').promises;
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const userId = req.body.userId || 'default';
+    const uploadDir = path.join(process.env.SAVE_ROOT || './uploads', 'user-resources', userId);
+    
+    // Create directory if it doesn't exist
+    await fs.mkdir(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename: timestamp-originalname
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
+    cb(null, `${name}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB per file limit (was 100MB)
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow common file types
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'video/mp4',
+      'audio/mpeg',
+      'text/plain'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('File type not allowed'));
+    }
+  }
+});
+
+/**
+ * POST /api/resources/upload
+ * 
+ * ⚠️ DISABLED: Files should be stored client-side (localStorage/IndexedDB).
+ * This endpoint is disabled to prevent unnecessary server storage costs.
+ * Students' personal files should stay on their own devices.
+ */
+app.post('/api/resources/upload', upload.single('file'), async (req, res) => {
+  // Return error immediately - uploads are disabled
+  return res.status(501).json({ 
+    error: 'Server uploads disabled. Files are stored locally on your device.',
+    hint: 'Use localStorage or IndexedDB for client-side storage'
+  });
+  
+  /* DISABLED CODE - DO NOT RE-ENABLE WITHOUT IMPLEMENTING CLOUD STORAGE
+  try {
+    const { userId, folderId, title, description, courseCode, tags } = req.body;
+    const file = req.file;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
+    }
+
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Determine file type from mime type
+    const fileTypeMap = {
+      'application/pdf': 'pdf',
+      'application/msword': 'docx',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+      'application/vnd.ms-powerpoint': 'pptx',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+      'image/jpeg': 'image',
+      'image/png': 'image',
+      'image/gif': 'image',
+      'video/mp4': 'video',
+      'audio/mpeg': 'audio',
+      'text/plain': 'text'
+    };
+
+    const fileType = fileTypeMap[file.mimetype] || 'other';
+
+    // Create resource in database
+    const resource = await prisma.resource.create({
+      data: {
+        userId,
+        folderId: folderId || null,
+        title: title || file.originalname,
+        description: description || null,
+        fileType,
+        fileName: file.originalname,
+        filePath: file.path,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        courseCode: courseCode || null
+      }
+    });
+
+    // Add tags if provided
+    if (tags) {
+      const tagNames = Array.isArray(tags) ? tags : JSON.parse(tags);
+      
+      for (const tagName of tagNames) {
+        // Get or create tag
+        const tag = await prisma.tag.upsert({
+          where: {
+            userId_name: {
+              userId,
+              name: tagName
+            }
+          },
+          create: {
+            userId,
+            name: tagName
+          },
+          update: {}
+        });
+
+        // Link tag to resource
+        await prisma.resourceTag.create({
+          data: {
+            resourceId: resource.id,
+            tagId: tag.id
+          }
+        });
+      }
+    }
+
+    // Fetch resource with relations
+    const fullResource = await prisma.resource.findUnique({
+      where: { id: resource.id },
+      include: {
+        folder: true,
+        tags: {
+          include: { tag: true }
+        }
+      }
+    });
+
+    res.status(201).json(fullResource);
+  } catch (error) {
+    console.error('Error uploading resource:', error);
+    res.status(500).json({ error: 'Failed to upload resource' });
+  }
+});
+
+/**
+ * GET /api/resources
+ * 
+ * ⚠️ DISABLED: Resources are now client-side only (localStorage/IndexedDB).
+ * No server storage or database queries needed.
+ */
+app.get('/api/resources', async (req, res) => {
+  return res.status(501).json({ 
+    error: 'Server-side resources disabled. Use client-side storage.',
+    hint: 'Resources should be managed via localStorage on the user\'s device'
+  });
+});
+
+/**
+ * GET /api/resources/:id
+ * 
+ * ⚠️ DISABLED: Resources are client-side only.
+ */
+app.get('/api/resources/:id', async (req, res) => {
+  res.status(501).json({ 
+    error: 'Server-side resources disabled. Use client-side storage.' 
+  });
+});
+
+/**
+ * PATCH /api/resources/:id
+ * Update resource metadata
+ */
+/**
+ * PATCH /api/resources/:id
+ * ⚠️ DISABLED: Resources are client-side only.
+ */
+app.patch('/api/resources/:id', async (req, res) => {
+  return res.status(501).json({ 
+    error: 'Server-side resources disabled. Use client-side storage.' 
+  });
+});
+
+/**
+ * DELETE /api/resources/:id
+ * ⚠️ DISABLED: Resources are client-side only.
+ */
+app.delete('/api/resources/:id', async (req, res) => {
+  res.status(501).json({ 
+    error: 'Server-side resources disabled. Use client-side storage.' 
+  });
+});
+
+// ===== FOLDERS API =====
+
+/**
+ * GET /api/folders
+ * Get all folders for a user
+ */
+app.get('/api/folders', async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
+    }
+
+    const folders = await prisma.folder.findMany({
+      where: { userId },
+      include: {
+        _count: {
+          select: { resources: true }
+        }
+      },
+      orderBy: { order: 'asc' }
+    });
+
+    res.json(folders);
+  } catch (error) {
+    console.error('Error fetching folders:', error);
+    res.status(500).json({ error: 'Failed to fetch folders' });
+  }
+});
+
+/**
+ * POST /api/folders
+ * Create a new folder
+ */
+app.post('/api/folders', async (req, res) => {
+  try {
+    const { userId, name, color, icon, parentId } = req.body;
+
+    if (!userId || !name) {
+      return res.status(400).json({ error: 'userId and name required' });
+    }
+
+    const folder = await prisma.folder.create({
+      data: {
+        userId,
+        name,
+        color: color || null,
+        icon: icon || null,
+        parentId: parentId || null
+      }
+    });
+
+    res.status(201).json(folder);
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    res.status(500).json({ error: 'Failed to create folder' });
+  }
+});
+
+/**
+ * PATCH /api/folders/:id
+ * Update folder
+ */
+app.patch('/api/folders/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, name, color, icon, order } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
+    }
+
+    const folder = await prisma.folder.findFirst({
+      where: { id, userId }
+    });
+
+    if (!folder) {
+      return res.status(404).json({ error: 'Folder not found' });
+    }
+
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (color !== undefined) updateData.color = color;
+    if (icon !== undefined) updateData.icon = icon;
+    if (order !== undefined) updateData.order = order;
+
+    const updated = await prisma.folder.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating folder:', error);
+    res.status(500).json({ error: 'Failed to update folder' });
+  }
+});
+
+/**
+ * DELETE /api/folders/:id
+ * Delete a folder (cascades to resources - sets folderId to null)
+ */
+app.delete('/api/folders/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
+    }
+
+    const folder = await prisma.folder.findFirst({
+      where: { id, userId }
+    });
+
+    if (!folder) {
+      return res.status(404).json({ error: 'Folder not found' });
+    }
+
+    await prisma.folder.delete({
+      where: { id }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting folder:', error);
+    res.status(500).json({ error: 'Failed to delete folder' });
+  }
+});
+
+// ===== TAGS API =====
+
+/**
+ * GET /api/tags
+ * Get all tags for a user
+ */
+app.get('/api/tags', async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId required' });
+    }
+
+    const tags = await prisma.tag.findMany({
+      where: { userId },
+      include: {
+        _count: {
+          select: { resources: true }
+        }
+      }
+    });
+
+    res.json(tags);
+  } catch (error) {
+    console.error('Error fetching tags:', error);
+    res.status(500).json({ error: 'Failed to fetch tags' });
+  }
+});
+
+// Start server
+const PORT = process.env.PORT || 4000;
+
+app.listen(PORT, () => {
+  console.log(`
+╔═══════════════════════════════════════════════════════╗
+║     Law Recordings Central API                        ║
+╚═══════════════════════════════════════════════════════╝
+
+▸ Server:    http://localhost:${PORT}
+▸ Health:    http://localhost:${PORT}/health
+
+▸ Recordings:
+   GET    /api/recordings       - List recordings
+   POST   /api/recordings       - Create recording (webhook)
+   GET    /api/recordings/:id   - Get recording details
+   
+▸ Resources:
+   POST   /api/resources/upload - Upload file
+   GET    /api/resources        - List resources
+   GET    /api/resources/:id    - Get resource details
+   PATCH  /api/resources/:id    - Update resource
+   DELETE /api/resources/:id    - Delete resource
+   
+▸ Folders:
+   GET    /api/folders          - List folders
+   POST   /api/folders          - Create folder
+   PATCH  /api/folders/:id      - Update folder
+   DELETE /api/folders/:id      - Delete folder
+   
+▸ Tags:
+   GET    /api/tags             - List tags
+   
+▸ Users:
+   GET    /api/users/:id        - Get user profile
+   POST   /api/users            - Create user (testing)
+   PATCH  /api/users/:id        - Update user tier
+   
+▸ Courses:
+   GET    /api/courses          - List courses
+   POST   /api/courses          - Import course
+   
+▸ Access:
+   POST   /api/access/grant     - Grant access
+   DELETE /api/access/revoke    - Revoke access
+
+▸ Auth:      Mock userId (ready for Supabase)
+▸ Database:  SQLite (api-server/prisma/dev.db)
+▸ Uploads:   ${process.env.SAVE_ROOT || './uploads'}/user-resources/
+
+✓ Ready for connections
+  `);
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  await prisma.$disconnect();
+  process.exit(0);
+});
