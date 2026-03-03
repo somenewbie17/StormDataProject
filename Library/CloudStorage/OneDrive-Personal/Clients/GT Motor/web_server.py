@@ -3,12 +3,12 @@ import json
 import requests
 import os
 
-# TG Media Test Account
-API_KEY = "930d10a705862e80d285fe12fea16363cb2d7fa97f4a45aaeac600baa3cff8c2"
-BASE_URL = "https://tg-media.booqable.com/api/1"
-# 555 Speedway Client Account (Blocked by Plan)
-# API_KEY = "732f958a95f5cb60c8064be2f82ef64a9d1bfa4066f33b17cde1f375484894cf"
-# BASE_URL = "https://555-speedway.booqable.com/api/1"
+# 555 Speedway Client Account
+API_KEY = "732f958a95f5cb60c8064be2f82ef64a9d1bfa4066f33b17cde1f375484894cf"
+BASE_URL = "https://555-speedway.booqable.com/api/1"
+# TG Media Test Account (Disabled)
+# API_KEY = "930d10a705862e80d285fe12fea16363cb2d7fa97f4a45aaeac600baa3cff8c2"
+# BASE_URL = "https://tg-media.booqable.com/api/1"
 # NOTE: API access requires Booqable plan upgrade (currently returns 402)
 # Client must enable API access in their Booqable plan settings.
 # ------------------------------
@@ -60,13 +60,14 @@ class BooqableHandler(SimpleHTTPRequestHandler):
                 r_cust_search = requests.get(f"{BASE_URL}/customers?q={cust_email}&per_page=1", headers=HEADERS)
                 customer_id = None
                 
-                # Property Definitions — TG Media Custom Fields (Restored)
+                # Property Definitions — 555 Speedway Custom Fields
+                # Note: Fetched properties returned empty list. Setting to None to prevent errors.
                 PROP_IDS = {
-                    "phone":         "6d40d4f5-8cb6-49cf-9804-88216593a1ed",
-                    "date_of_birth": "f4ad91bd-7db2-4043-b0e4-91a18edd95a5",
-                    "id_type":       "afc85b3f-8816-4fbd-99b5-4a369c746c46",
-                    "id_number":     "db5c761a-e412-4c33-8b0d-107579b99282",
-                    "customer_type": "ef4c3907-9ac0-42f4-b0b0-de174defbf70"
+                    "phone":         None,
+                    "date_of_birth": None,
+                    "id_type":       None,
+                    "id_number":     None,
+                    "customer_type": None
                 }
 
                 if r_cust_search.status_code == 200 and r_cust_search.json().get('customers'):
@@ -216,28 +217,28 @@ class BooqableHandler(SimpleHTTPRequestHandler):
                     
                     # 2. Add Line Item with Product Mapping (New Endpoint)
                     
-                    # ID MAP for Products (From User CSV) - TG MEDIA (TEST ACCOUNT 5 MAR 2026)
-                    PRODUCT_MAP = {
-                        # Standard sessions
-                        "SINGLE_6":  "57cabcec-851c-449c-b39d-f9d708e0c47d",  # Single Seat 6 mins test
-                        "SINGLE_10": "548ab780-d9b5-4902-af2c-7559dd4a314d",  # Single Seat 10 mins test
-                        "DOUBLE_6":  "fa1fcc74-0cc5-4a95-a14e-677b5d7e2553",  # Double Seat 6 mins test
-                        "DOUBLE_10": "988bb186-ee63-4549-8ee6-4c145e464961",  # Double Seat 10 mins test
+# ID MAP for Products (Updated 555 Speedway - 5 Mar 2026)
+                PRODUCT_MAP = {
+                    # Standard sessions
+                    "SINGLE_6":  "18320ca3-45d1-4469-b8dc-e59b9c658fdf",  # Single Seat Go Kart - 6 mins
+                    "SINGLE_10": "3690027e-57f8-46cf-972f-da183254c96d",  # Single Seat Go Kart - 10 mins
+                    "DOUBLE_6":  "9016f81a-da1a-46d1-8a5d-04a9cd9e2ecf",  # Double Seat - Go Kart - 6 Minutes
+                    "DOUBLE_10": "2da157ec-e579-4552-9bf8-5cb5c1480b62",  # Double Seat - Go Kart - 10 Minutes
 
-                        # Wednesday Special (8 min) - mapped to 6
-                        "SINGLE_8":  "57cabcec-851c-449c-b39d-f9d708e0c47d",
-                        "DOUBLE_8":  "fa1fcc74-0cc5-4a95-a14e-677b5d7e2553",
+                    # Wednesday Special (8 min) - mapped to 6 (same as before)
+                    "SINGLE_8":  "18320ca3-45d1-4469-b8dc-e59b9c658fdf",
+                    "DOUBLE_8":  "9016f81a-da1a-46d1-8a5d-04a9cd9e2ecf",
 
-                        # Private Track Pass (Kart)
-                        "PRIVATE_KART_WKND": "8cade778-f49e-4b2b-ae00-9347bc6aa723",
-                        "PRIVATE_KART_WEEK": "4a4e77e6-3618-4d65-9089-d3ee60c8b843",
+                    # Private Track Pass (Kart)
+                    "PRIVATE_KART_WKND": "554a506c-db15-4cd4-ab49-e1e5ca82263b",
+                    "PRIVATE_KART_WEEK": "e1d5fa2a-a0e2-42b9-8b7a-43364b2d5279",
 
-                        # Private Track Pass (Bike)
-                        "PRIVATE_BIKE_WKND": "cd0aa4ff-df81-40a5-be36-8b39a6367492",
-                        "PRIVATE_BIKE_WEEK": "399e39ae-47bb-4e0d-ae14-b7d28a8e52a8",
+                    # Private Track Pass (Bike)
+                    "PRIVATE_BIKE_WKND": "85645ca3-fa2a-4138-ad89-bf831bb7f7e4",
+                    "PRIVATE_BIKE_WEEK": "1e254986-695b-4e63-9a6f-6bb72d21d47f",
 
-                        # Track Day Pass
-                        "TRACK_DAY_PASS":    "49957d46-62a9-4a22-a4e3-60792e81fc97",  # Keep existing for now if matched
+                    # Track Day Pass
+                    "TRACK_DAY_PASS":    "49957d46-62a9-4a22-a4e3-60792e81fc97",  # Track - Day Pass
 
                         # Race Day Qualifier
                         "RACE_DAY_QUALIFIER": "PENDING_PRODUCT_CREATION"
